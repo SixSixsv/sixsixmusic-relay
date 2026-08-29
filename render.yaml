@@ -1,0 +1,19 @@
+# Render.com blueprint para el relay de SixSixMusic
+# Cómo usarlo:
+#   1. Sube este repositorio a GitHub.
+#   2. En Render: New -> Blueprint -> conecta el repo.
+#   3. Render crea el Web Service con estas variables. Rellena los valores.
+services:
+  - type: web
+    name: sixsixmusic-together-relay
+    runtime: node
+    rootDir: relay
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: TOGETHER_TOKEN
+        sync: false        # la pides en el primer deploy (secreto)
+      - key: PUBLIC_BASE_URL
+        sync: false        # la pides en el primer deploy (ej. https://sixsixmusic-together-relay.onrender.com)
