@@ -162,6 +162,7 @@ app.post('/v1/together/sessions', (req, res) => {
     settings: normalizedSettings,
     hostSocket: null,
     hostParticipantId: null,
+    hostName: hostDisplayName.trim(),
     guests: new Map(), // participantId -> { socket, participantId, name, pending }
   });
   codeToSessionId.set(code, sessionId);
@@ -192,6 +193,35 @@ app.post('/v1/together/sessions/resolve', (req, res) => {
     wsUrl,
     settings: session.settings,
   });
+});
+
+// Participantes conectados (host + invitados). No requiere clave de guest para invitar.
+app.get('/v1/together/sessions/:id/participants', (req, res) => {
+  if (!hasValidAuth(req)) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  const session = sessions.get(req.params.id);
+  if (!session) return res.status(404).json({ ok: false, error: 'Session not found' });
+
+  const participants = [];
+  if (session.hostParticipantId && session.hostName) {
+    participants.push({
+      id: session.hostParticipantId,
+      name: session.hostName,
+      isHost: true,
+      isPending: false,
+      isConnected: true,
+    });
+  }
+  session.guests.forEach((g) => {
+    participants.push({
+      id: g.participantId,
+      name: g.name,
+      isHost: false,
+      isPending: !!g.pending,
+      isConnected: true,
+    });
+  });
+
+  res.json({ ok: true, participants });
 });
 
 // Límite de sesiones huérfanas para evitar fugas de memoria (uso básico).
