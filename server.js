@@ -71,6 +71,67 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, sessions: sessions.size });
 });
 
+// ---- Jam join deep link (QR de la Jam online) ----
+// La cámara del sistema solo hace clicable http/https, así que el QR apunta
+// aquí y esta página abre la app mediante el deep link custom.
+app.get('/join', (req, res) => {
+  const code = (req.query.code || '').toString().trim();
+  const host = (req.query.host || '').toString().trim();
+  const deep = `sixsixmusic://together/online?code=${encodeURIComponent(code)}&host=${encodeURIComponent(host)}`;
+  res.type('html').send(`<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unirse a la Jam - SixSixMusic</title>
+</head>
+<body style="margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0d0d0d;color:#f2f2f2;text-align:center;padding:48px 24px">
+  <h2 style="font-weight:700">Unirse a la Jam</h2>
+  <p style="opacity:.75">Abriendo SixSixMusic…</p>
+  <a id="open" href="#" style="display:inline-block;margin-top:16px;padding:14px 26px;background:#1ed760;color:#000;border-radius:999px;text-decoration:none;font-weight:700">Abrir SixSixMusic</a>
+  <p style="opacity:.5;font-size:13px;margin-top:24px">Si no se abre, toca el botón.</p>
+  <script>
+    var deep = ${JSON.stringify(deep)};
+    document.getElementById('open').href = deep;
+    setTimeout(function () { window.location.href = deep; }, 300);
+  </script>
+</body>
+</html>`);
+});
+
+// ---- Android App Links ----
+// Para que la cámara abra la app directamente (sin navegador). Incluye el
+// paquete/fingerprint de la build instalada. La release se toma de la variable
+// de entorno ANDROID_RELEASE_SHA256.
+const ANDROID_PACKAGE_DEBUG = 'com.sixsixmusic.debug';
+const ANDROID_PACKAGE_RELEASE = 'com.sixsixmusic';
+const ANDROID_DEBUG_SHA256 = '23:00:80:54:9D:19:7B:62:51:19:AA:2C:BA:0D:52:45:2A:04:B0:86:5E:8E:EE:ED:3D:D8:5B:57:FE:75:1B:45';
+const ANDROID_RELEASE_SHA256 = (process.env.ANDROID_RELEASE_SHA256 || '').trim();
+
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  const statements = [
+    {
+      relation: ['delegate_permission/common.handle_all_urls'],
+      target: {
+        namespace: 'android_app',
+        package_name: ANDROID_PACKAGE_DEBUG,
+        sha256_cert_fingerprints: [ANDROID_DEBUG_SHA256],
+      },
+    },
+  ];
+  if (ANDROID_RELEASE_SHA256) {
+    statements.push({
+      relation: ['delegate_permission/common.handle_all_urls'],
+      target: {
+        namespace: 'android_app',
+        package_name: ANDROID_PACKAGE_RELEASE,
+        sha256_cert_fingerprints: [ANDROID_RELEASE_SHA256],
+      },
+    });
+  }
+  res.type('application/json').send(JSON.stringify(statements, null, 2));
+});
+
 app.get('/v1/together/ws', (_req, res) => {
   res.json({ msg: 'Use the WebSocket connection.' });
 });
